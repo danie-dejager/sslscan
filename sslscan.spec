@@ -14,14 +14,7 @@ License:        LicenseRef-Callaway-GPLv3+-with-exceptions
 # use --without bundled_openssl to override and build with system openssl
 %bcond_without     bundled_openssl
 
-# rbsec sslscan fork
-URL:            https://github.com/rbsec/sslscan/
-Source0:        %{url}/archive/%{version}/%{name}-%{version}.tar.gz
-
 Source1:        https://www.openssl.org/source/openssl-%{bundled_openssl_version}.tar.gz
-Patch0:         sslscan-override-CFLAGS.patch
-Patch1:         sslscan-disable-opensslpull.patch
-
 
 BuildRequires:  gcc
 BuildRequires:  make
@@ -40,14 +33,73 @@ that are supported. SSLScan is designed to be easy, lean and fast.
 The output includes preferred ciphers of the SSL service, the certificate
 and is in text and XML formats.
 
+
 %prep
-%autosetup -n %{name}-%{version}
+%autosetup -N -n %{name}-%{version}
+
+# Override Makefile CFLAGS assignments so RPM build flags are preserved.
+patch -p1 <<'PATCH'
+--- a/Makefile
++++ b/Makefile
+@@ -42,14 +42,14 @@
+ endif
+ endif
+ ifeq ($(OS), SunOS)
+-	CFLAGS += -m64
++	override CFLAGS += -m64
+ 	LIBS   += -lsocket -lnsl
+ endif
+
+ # Enable checks for buffer overflows, add stack protectors, generate position
+ # independent code, mark the relocation table read-only, and mark the global
+ # offset table read-only.
+-CFLAGS  += -D_FORTIFY_SOURCE=2 -fstack-protector-all -fPIE
++override CFLAGS  += -O -D_FORTIFY_SOURCE=2 -fstack-protector-all -fPIE
+
+ # Don't enable some hardening flags on OS X because it uses an old version of Clang
+ ifneq ($(OS), Darwin)
+@@ -65,13 +65,13 @@
+ endif
+
+ # Force C11 mode to fix the build on very old version of GCC
+-CFLAGS += -std=gnu11
++override CFLAGS += -std=gnu11
+
+ # for static linking
+ ifeq ($(STATIC_BUILD), TRUE)
+ PWD          = $(shell pwd)/openssl
+ LDFLAGS      += -L${PWD}/
+-CFLAGS       += -I${PWD}/include/ -I${PWD}/
++override CFLAGS       += -I${PWD}/include/ -I${PWD}/
+ ifeq ($(OS), Darwin)
+ LIBS	     = ./openssl/libssl.a ./openssl/libcrypto.a -lz -lpthread
+ else
+@@ -89,7 +89,7 @@
+ else
+ # for dynamic linking
+ LDFLAGS   += -L/usr/local/lib -L/usr/local/ssl/lib -L/usr/local/opt/openssl/lib -L/opt/local/lib
+-CFLAGS    += -I/usr/local/include -I/usr/local/ssl/include -I/usr/local/ssl/include/openssl -I/usr/local/opt/openssl/include -I/opt/local/include -I/opt/local/include/openssl
++override CFLAGS    += -I/usr/local/include -I/usr/local/ssl/include -I/usr/local/ssl/include/openssl -I/usr/local/opt/openssl/include -I/opt/local/include -I/opt/local/include/openssl
+ endif
+PATCH
+
+# Prevent the Makefile from downloading OpenSSL from Git during the build.
+patch -p1 <<'PATCH'
+--- a/Makefile
++++ b/Makefile
+@@ -137,7 +137,8 @@
+-	.openssl.is.fresh: opensslpull
++	.openssl.is.fresh:
++		@true
+PATCH
 
 %if %{with bundled_openssl}
 mkdir openssl
 cd openssl
 tar xvf %{SOURCE1} --strip-components=1
+cd ..
 %endif
+
 
 %build
 %if %{with bundled_openssl}
