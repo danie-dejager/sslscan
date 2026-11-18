@@ -3,7 +3,9 @@ Version:        2.2.4
 %global         bundled_openssl_version    3.5.8
 Release:        %autorelease
 Summary:        Security assessment tool for SSL/TLS
+URL:            https://github.com/rbsec/sslscan
 
+Source0:        https://github.com/rbsec/sslscan/archive/refs/tags/v%{version}.tar.gz
 # Special exception to allow linking against the OpenSSL libraries
 # Automatically converted from old format: GPLv3+ with exceptions - review is highly recommended.
 License:        LicenseRef-Callaway-GPLv3+-with-exceptions
